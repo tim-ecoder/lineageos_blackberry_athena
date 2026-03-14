@@ -1,0 +1,18 @@
+--- a/device/blackberry/athena/device.mk
++++ b/device/blackberry/athena/device.mk
+@@ -16,6 +16,9 @@
+ DEVICE_PATH := device/blackberry/athena
+
++# Signing keys
++PRODUCT_DEFAULT_DEV_CERTIFICATE := /data4/LOS22-build/signing-keys/releasekey
++
+ # Vendor blobs
+ $(call inherit-product, vendor/blackberry/athena/athena-vendor.mk)
+
+Description: Use custom signing keys (krab-ubica from keystore3.jks) instead of AOSP test keys.
+Keys are stored in /data4/LOS22-build/signing-keys/ with unique certificates per role
+(platform, media, bluetooth, nfc, sdk_sandbox, networkstack, shared, testkey).
+Must be set in device.mk, NOT as shell env var.
+
+File: device/blackberry/athena/device.mk
+Signing keys directory: /data4/LOS22-build/signing-keys/

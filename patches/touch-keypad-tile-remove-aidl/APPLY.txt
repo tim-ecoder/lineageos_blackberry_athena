@@ -1,0 +1,6 @@
+Apply to: device/blackberry/sdm660-common
+
+Also manually remove from device/blackberry/athena/device.mk:
+  # Touch Keypad
+  PRODUCT_PACKAGES += \
+      vendor.blackberry.touchkeypad-service

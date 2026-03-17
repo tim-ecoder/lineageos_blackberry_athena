@@ -1,0 +1,71 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: user <user@localhost>
+Date: Fri, 14 Mar 2026 15:00:00 +0000
+Subject: [PATCH 2/2] vendor: Populate thermal-engine config
+
+Add thermal throttling rules: SS algorithms for CPU clusters (75C)
+and GPU (70C), skin temperature monitor with progressive frequency
+capping, battery protection, and emergency shutdown at 95C.
+
+diff --git a/proprietary/vendor/etc/thermal-engine.conf b/proprietary/vendor/etc/thermal-engine.conf
+index 33fc821..cee84e2 100644
+--- a/proprietary/vendor/etc/thermal-engine.conf
++++ b/proprietary/vendor/etc/thermal-engine.conf
+@@ -1,2 +1,53 @@
+-# File empty by default.
+-# Replace contents of this file with custom configuration.
++[SS-CPU0]
++algo_type ss
++sampling 1000
++sensor tsens_tz_sensor1
++device cpu0
++set_point 75000
++set_point_clr 65000
++time_constant 0
++
++[SS-CPU4]
++algo_type ss
++sampling 1000
++sensor tsens_tz_sensor3
++device cpu4
++set_point 75000
++set_point_clr 65000
++time_constant 0
++
++[SS-GPU]
++algo_type ss
++sampling 1000
++sensor tsens_tz_sensor12
++device gpu
++set_point 70000
++set_point_clr 60000
++time_constant 0
++
++[SKIN-MONITOR]
++algo_type monitor
++sampling 5000
++sensor tsens_tz_sensor5
++thresholds 50000 55000 60000
++thresholds_clr 47000 52000 57000
++actions cpu0+cpu4+gpu cpu0+cpu4+gpu cpu0+cpu4+gpu
++action_info 1401600+1401600+510000000 1113600+1113600+400000000 902400+902400+320000000
++
++[BATTERY-MONITOR]
++algo_type monitor
++sampling 5000
++sensor tsens_tz_sensor2
++thresholds 45000
++thresholds_clr 42000
++actions battery
++action_info 1
++
++[SHUTDOWN-WARNING]
++algo_type monitor
++sampling 1000
++sensor tsens_tz_sensor5
++thresholds 90000 95000
++thresholds_clr 85000 90000
++actions hotplug_4+hotplug_5+hotplug_6+hotplug_7 shutdown
++action_info 1+1+1+1 1
+-- 
+2.34.1

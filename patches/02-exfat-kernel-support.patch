@@ -1,9 +1,0 @@
---- a/arch/arm64/configs/athena-perf_defconfig
-+++ b/arch/arm64/configs/athena-perf_defconfig
-@@ -4792,6 +4792,7 @@
- # CONFIG_NTFS_FS is not set
-+CONFIG_EXFAT_FS=y
-
-Description: Enable exFAT filesystem support in kernel for SD card compatibility.
-
-File: kernel/blackberry/sdm660/arch/arm64/configs/athena-perf_defconfig

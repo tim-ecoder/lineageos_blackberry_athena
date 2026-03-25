@@ -1,0 +1,30 @@
+diff --git a/sound/soc/msm/qdsp6v2/msm-pcm-routing-v2.c b/sound/soc/msm/qdsp6v2/msm-pcm-routing-v2.c
+index 1e971286aa12..3ed8bc7e7bc5 100644
+--- a/sound/soc/msm/qdsp6v2/msm-pcm-routing-v2.c
++++ b/sound/soc/msm/qdsp6v2/msm-pcm-routing-v2.c
+@@ -1434,6 +1434,10 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
+ 			topology = msm_routing_get_adm_topology(fedai_id,
+ 								session_type,
+ 								i);
++			/* BB ACDB has no topology for non-zero app_type on
++			 * capture; clear app_type to prevent ADSP reject */
++			if (topology == 0 && app_type != 0)
++				app_type = 0;
+ 			copp_idx = adm_open(msm_bedais[i].port_id, path_type,
+ 					    sample_rate, channels, topology,
+ 					    perf_mode, bits_per_sample,
+diff --git a/sound/soc/msm/qdsp6v2/q6asm.c b/sound/soc/msm/qdsp6v2/q6asm.c
+index 5d7dd8e3771c..dac773dbec90 100644
+--- a/sound/soc/msm/qdsp6v2/q6asm.c
++++ b/sound/soc/msm/qdsp6v2/q6asm.c
+@@ -2771,6 +2771,10 @@ static int __q6asm_open_read(struct audio_client *ac,
+ 
+ 	ac->topology = open.preprocopo_id;
+ 	ac->app_type = q6asm_get_asm_app_type_cal();
++	/* BB ACDB has no preproc topology for capture; use NONE so
++	 * ADSP accepts the session without ACDB calibration */
++	if (open.preprocopo_id == 0)
++		open.preprocopo_id = ASM_STREAM_PREPROCOPO_ID_NONE;
+ 	if (ac->perf_mode == LOW_LATENCY_PCM_MODE) {
+ 		open.mode_flags |= ASM_LOW_LATENCY_TX_STREAM_SESSION <<
+ 			ASM_SHIFT_STREAM_PERF_MODE_FLAG_IN_OPEN_READ;

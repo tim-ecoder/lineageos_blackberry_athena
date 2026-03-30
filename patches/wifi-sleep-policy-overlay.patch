@@ -1,0 +1,40 @@
+diff --git a/common.mk b/common.mk
+index 6fda9a8..b1110ec 100644
+--- a/common.mk
++++ b/common.mk
+@@ -264,6 +264,7 @@ PRODUCT_PACKAGES += \
+     Sdm660LineageSDKOverlay \
+     Sdm660SystemUIOverlay \
+     Sdm660SettingsOverlay \
++    Sdm660SettingsProviderOverlay \
+     Sdm660TelephonyOverlay \
+     Sdm660TetheringOverlay \
+     Sdm660WifiOverlayOverlay
+=== overlay/Sdm660SettingsProviderOverlay/Android.bp ===
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+
+runtime_resource_overlay {
+    name: "Sdm660SettingsProviderOverlay",
+    product_specific: true,
+}
+=== overlay/Sdm660SettingsProviderOverlay/AndroidManifest.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.android.providers.settings.overlay.common">
+    <overlay
+        android:isStatic="true"
+        android:targetPackage="com.android.providers.settings" />
+</manifest>
+=== overlay/Sdm660SettingsProviderOverlay/res/values/defaults.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep WiFi on during sleep: 0=always, 1=only when plugged in, 2=never -->
+    <integer name="def_wifi_sleep_policy">0</integer>
+</resources>

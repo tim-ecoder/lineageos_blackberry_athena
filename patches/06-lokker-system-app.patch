@@ -1,26 +1,14 @@
 Description: Add Lokker app (https://github.com/tim-ecoder/Lokker.git) as privileged system app.
+Version: v1.1
 
-Files added:
-  packages/apps/Lokker/Android.bp              — AOSP build config
-  packages/apps/Lokker/libs/Android.bp          — security-crypto + tink prebuilt libs
-  packages/apps/Lokker/libs/security-crypto.aar — androidx.security:security-crypto:1.1.0-alpha06
-  packages/apps/Lokker/libs/tink-android.jar    — com.google.crypto.tink (from Seedvault)
-  packages/apps/Lokker/src/                     — app source from GitHub repo
-  packages/apps/Lokker/com.lokker.app.privapp-permissions.xml — privileged permissions whitelist
-
-Files modified:
-  device/blackberry/athena/device.mk            — added Lokker to PRODUCT_PACKAGES
-
---- a/device/blackberry/athena/device.mk
-+++ b/device/blackberry/athena/device.mk
-@@ -59,6 +59,10 @@
-+# Lokker
-+PRODUCT_PACKAGES += \
-+    Lokker
-+
- # Touch Keypad
+Files:
+  device/blackberry/athena/prebuilt/Lokker.apk  — prebuilt APK from GitHub releases
+  device/blackberry/athena/prebuilt/Android.bp   — prebuilt module definition
+  device/blackberry/athena/prebuilt/com.lokker.app.privapp-permissions.xml — privileged permissions
+  device/blackberry/athena/device.mk             — added Lokker to PRODUCT_PACKAGES
 
 Install location: system_ext/priv-app/Lokker/Lokker.apk
 Signed with: platform certificate
+APK source: https://github.com/tim-ecoder/Lokker/releases/tag/Lokker-v1.1
 Privileged permissions: MANAGE_USERS, CHANGE_COMPONENT_ENABLED_STATE, REMOVE_TASKS,
   REAL_GET_TASKS, WRITE_SECURE_SETTINGS, MANAGE_ACTIVITY_STACKS

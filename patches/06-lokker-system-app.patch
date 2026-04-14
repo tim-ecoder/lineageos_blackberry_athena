@@ -1,5 +1,5 @@
 Description: Add Lokker app (https://github.com/tim-ecoder/Lokker.git) as privileged system app.
-Version: v1.1
+Version: v1.2a
 
 Files:
   device/blackberry/athena/prebuilt/Lokker.apk  — prebuilt APK from GitHub releases
@@ -8,7 +8,21 @@ Files:
   device/blackberry/athena/device.mk             — added Lokker to PRODUCT_PACKAGES
 
 Install location: system_ext/priv-app/Lokker/Lokker.apk
-Signed with: platform certificate
-APK source: https://github.com/tim-ecoder/Lokker/releases/tag/Lokker-v1.1
+Signed with: platform certificate (signing-keys-old-sha384/platform.pk8)
+APK source: https://github.com/tim-ecoder/Lokker/releases/tag/Lokker-v1.2a
 Privileged permissions: MANAGE_USERS, CHANGE_COMPONENT_ENABLED_STATE, REMOVE_TASKS,
   REAL_GET_TASKS, WRITE_SECURE_SETTINGS, MANAGE_ACTIVITY_STACKS
+
+Preprocessing (required — privileged apps must have uncompressed dex, Soong rejects
+compressed dex). The upstream v1.2a release ships a Gradle-built APK with compressed
+dex, so a local preprocess step is required before dropping into prebuilt/:
+
+  1. Rebuild the APK with classes*.dex entries as ZIP_STORED (Python zipfile).
+  2. zipalign -p -f 4
+  3. apksigner sign --key platform.pk8 --cert platform.x509.pem --v2-signing-enabled true
+     (signing-keys-old-sha384/platform.* — SHA-256 93940c5a5366d4d9...
+      matches the upstream Lokker v2 signer, so the re-signed APK preserves
+      cert identity and allows in-place upgrades.)
+
+Upstream fix: add `androidResources { noCompress += ['dex'] }` to Lokker's
+app/build.gradle to ship a preprocessed APK directly and skip these steps.

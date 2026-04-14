@@ -1,6 +1,18 @@
+Description: Fix SD card mount by giving MediaProvider the correct SELinux domain.
+MediaProvider (inside com.android.mediaprovider APEX) is signed with the platform key
+but needs seinfo=media to get the mediaprovider_app SELinux domain for FUSE access.
+Without this, MediaProvider runs as platform_app which lacks /dev/fuse access,
+causing vold public volume mount to fail.
+
+Must be placed BEFORE the global platform seinfo entry.
+
+File: system/sepolicy/private/mac_permissions.xml
+
+diff --git a/system/sepolicy/private/mac_permissions.xml b/system/sepolicy/private/mac_permissions.xml
 --- a/system/sepolicy/private/mac_permissions.xml
 +++ b/system/sepolicy/private/mac_permissions.xml
-@@ -47,6 +47,13 @@
+@@ -46,6 +46,13 @@
+      </signer>
  -->
 
 +    <!-- Platform key with package-specific seinfo overrides -->
@@ -13,13 +25,3 @@
      <!-- Platform dev key in AOSP -->
      <signer signature="@PLATFORM" >
        <seinfo value="platform" />
-
-Description: Fix SD card mount by giving MediaProvider the correct SELinux domain.
-MediaProvider (inside com.android.mediaprovider APEX) is signed with the platform key
-but needs seinfo=media to get the mediaprovider_app SELinux domain for FUSE access.
-Without this, MediaProvider runs as platform_app which lacks /dev/fuse access,
-causing vold public volume mount to fail.
-
-Must be placed BEFORE the global platform seinfo entry.
-
-File: system/sepolicy/private/mac_permissions.xml

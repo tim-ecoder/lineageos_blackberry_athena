@@ -1,0 +1,28 @@
+Description: Add K12KB (https://github.com/tim-ecoder/K12KB.git) as a product app.
+Version: v3.1c
+
+Files:
+  device/blackberry/athena/prebuilt/K12KB.apk    — prebuilt APK from GitHub releases
+  device/blackberry/athena/prebuilt/Android.bp   — prebuilt module definition
+  device/blackberry/athena/device.mk             — added K12KB to PRODUCT_PACKAGES
+
+Install location: product/app/K12KB/K12KB.apk
+Signed with: upstream K12KB signer (presigned: true, no re-signing needed)
+APK source: https://github.com/tim-ecoder/K12KB/releases/tag/K12KB-v3.1c
+
+Not a privileged system app — regular `product_specific: true` android_app_import.
+No dex preprocessing required; Soong installs the APK as-is.
+
+compileSdk: 30 (R)  |  versionCode: 3007  |  versionName: v3.1c
+
+Module definition (device/blackberry/athena/prebuilt/Android.bp):
+
+  android_app_import {
+      name: "K12KB",
+      apk: "K12KB.apk",
+      presigned: true,
+      dex_preopt: {
+          enabled: false,
+      },
+      product_specific: true,
+  }

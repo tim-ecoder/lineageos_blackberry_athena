@@ -1,0 +1,100 @@
+diff --git a/core/java/android/content/IntentFilter.java b/core/java/android/content/IntentFilter.java
+index e895d7be1102..62ee56ac552e 100644
+--- a/core/java/android/content/IntentFilter.java
++++ b/core/java/android/content/IntentFilter.java
+@@ -712,16 +712,16 @@ public class IntentFilter implements Parcelable {
+ 
+         // Now allow only the schemes "http" and "https"
+         final int N = mDataSchemes.size();
++        boolean hasWebScheme = false;
+         for (int i = 0; i < N; i++) {
+             final String scheme = mDataSchemes.get(i);
+             final boolean isWebScheme =
+                     SCHEME_HTTP.equals(scheme) || SCHEME_HTTPS.equals(scheme);
+             if (onlyWebSchemes) {
+-                // If we're specifically trying to ensure that there are no non-web schemes
+-                // declared in this filter, then if we ever see a non-http/https scheme then
+-                // we know it's a failure.
+-                if (!isWebScheme) {
+-                    return false;
++                // Allow mixed schemes - if filter has both web and non-web schemes,
++                // still consider it a web URI handler for domain verification
++                if (isWebScheme) {
++                    hasWebScheme = true;
+                 }
+             } else {
+                 // If we see any http/https scheme declaration in this case then the
+@@ -732,10 +732,7 @@ public class IntentFilter implements Parcelable {
+             }
+         }
+ 
+-        // We get here if:
+-        //   1) onlyWebSchemes and no non-web schemes were found, i.e. success; or
+-        //   2) !onlyWebSchemes and no http/https schemes were found, i.e. failure.
+-        return onlyWebSchemes;
++        return onlyWebSchemes && hasWebScheme;
+     }
+ 
+     /**
+diff --git a/services/core/java/com/android/server/pm/verify/domain/DomainVerificationService.java b/services/core/java/com/android/server/pm/verify/domain/DomainVerificationService.java
+index 5c8215e4bfdb..d03fad37877c 100644
+--- a/services/core/java/com/android/server/pm/verify/domain/DomainVerificationService.java
++++ b/services/core/java/com/android/server/pm/verify/domain/DomainVerificationService.java
+@@ -1143,12 +1143,23 @@ public class DomainVerificationService extends SystemService
+             applyPreVerifiedState(pkgState.getStateMap(), autoVerifyDomains, preVerifiedDomains);
+         }
+ 
+-        synchronized (mLock) {
+-            mAttachedPkgStates.put(pkgName, domainSetId, pkgState);
++        // Auto-approve all auto-verify domains (no verification agent needed)
++        if (hasAutoVerifyDomains) {
++            ArrayMap<String, Integer> stateMap = pkgState.getStateMap();
++            int domainsSize = autoVerifyDomains.size();
++            for (int index = 0; index < domainsSize; index++) {
++                String domain = autoVerifyDomains.valueAt(index);
++                Integer current = stateMap.get(domain);
++                if (current == null
++                        || current == DomainVerificationState.STATE_NO_RESPONSE
++                        || current == DomainVerificationState.STATE_LEGACY_FAILURE) {
++                    stateMap.put(domain, DomainVerificationState.STATE_SUCCESS);
++                }
++            }
+         }
+ 
+-        if (sendBroadcast && hasAutoVerifyDomains) {
+-            sendBroadcast(pkgName);
++        synchronized (mLock) {
++            mAttachedPkgStates.put(pkgName, domainSetId, pkgState);
+         }
+     }
+ 
+@@ -1437,14 +1448,22 @@ public class DomainVerificationService extends SystemService
+     }
+ 
+     private void sendBroadcast(@NonNull Set<String> packageNames) {
+-        if (!mCanSendBroadcasts) {
+-            // If the system cannot send broadcasts, it's probably still in boot, so dropping this
+-            // request should be fine. The verification agent should re-scan packages once boot
+-            // completes.
+-            return;
++        // Auto-approve all domains for all packages (no verification agent needed)
++        synchronized (mLock) {
++            for (String pkgName : packageNames) {
++                DomainVerificationPkgState pkgState = mAttachedPkgStates.get(pkgName);
++                if (pkgState != null) {
++                    ArrayMap<String, Integer> stateMap = pkgState.getStateMap();
++                    for (int i = 0; i < stateMap.size(); i++) {
++                        int state = stateMap.valueAt(i);
++                        if (state == DomainVerificationState.STATE_NO_RESPONSE
++                                || state == DomainVerificationState.STATE_LEGACY_FAILURE) {
++                            stateMap.setValueAt(i, DomainVerificationState.STATE_SUCCESS);
++                        }
++                    }
++                }
++            }
+         }
+-
+-        mProxy.sendBroadcastForPackages(packageNames);
+     }
+ 
+     private boolean hasRealVerifier() {

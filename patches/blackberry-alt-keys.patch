@@ -1,45 +1,20 @@
-From: Claude AI Assistant
-Date: Thu, 6 Feb 2025 05:45:00 +0000
-Subject: [PATCH] Fix Alt+character combinations for BlackBerry physical keyboard
-
-The BlackBerry keyboard's alt+character mappings (e.g., Alt+W='1') were
-producing invisible characters instead of the expected symbols.
-
-Root cause: The keyboard_layout_english_us overlay was being applied via
-KeyCharacterMap::combine(), which overwrites keys using insert_or_assign().
-This replaced stmpe.kcm's 5-behavior keys (including alt) with the overlay's
-4-behavior keys (no alt), causing alt behaviors to be lost at runtime.
-
-Solution: Skip overlay application for stmpe_keypad device in EventHub,
-allowing stmpe.kcm to have full priority without being overwritten.
-
-Changes:
-- EventHub.cpp: Skip overlay for stmpe_keypad built-in keyboard
-- stmpe.kcm: Use explicit capslock definitions and alt mappings
-
-Tested-by: BlackBerry KEY2 (athena)
----
- frameworks/native/services/inputflinger/reader/EventHub.cpp | 6 ++++++
- device/blackberry/sdm660-common/configs/keylayout/keychars/stmpe.kcm | 3 ++-
- 2 files changed, 8 insertions(+), 1 deletion(-)
-
-diff --git a/frameworks/native/services/inputflinger/reader/EventHub.cpp b/frameworks/native/services/inputflinger/reader/EventHub.cpp
-index 1234567..abcdef9 100644
---- a/frameworks/native/services/inputflinger/reader/EventHub.cpp
-+++ b/frameworks/native/services/inputflinger/reader/EventHub.cpp
-@@ -1547,6 +1547,12 @@ bool EventHub::setKeyboardLayoutOverlay(int32_t deviceId, std::shared_ptr<KeyCh
+diff --git a/services/inputflinger/reader/EventHub.cpp b/services/inputflinger/reader/EventHub.cpp
+index 013ef862ad..41f316d641 100644
+--- a/services/inputflinger/reader/EventHub.cpp
++++ b/services/inputflinger/reader/EventHub.cpp
+@@ -1547,6 +1547,15 @@ bool EventHub::setKeyboardLayoutOverlay(int32_t deviceId, std::shared_ptr<KeyCha
      if (device == nullptr || device->keyMap.keyCharacterMap == nullptr) {
          return false;
      }
 +
-+    // Skip overlay for stmpe keyboard - it has complete custom mappings
-+    if (device->identifier.name == "stmpe_keypad") {
-+        ALOGW("EventHub: Skipping overlay for stmpe_keypad - using native kcm layout");
++    // Skip overlay for stmpe keyboard variants - they have complete custom mappings
++    if (device->identifier.name.find("stmpe") != std::string::npos &&
++        device->identifier.name.find("keypad") != std::string::npos) {
++        ALOGW("EventHub: Skipping overlay for %s - using native kcm layout",
++              device->identifier.name.c_str());
 +        return false;
 +    }
- 
++
      if (map == nullptr) {
          device->keyMap.keyCharacterMap->clearLayoutOverlay();
---
-2.34.1
-
+         return true;

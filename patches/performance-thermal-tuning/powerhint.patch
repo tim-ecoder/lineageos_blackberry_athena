@@ -1,0 +1,23 @@
+diff --git a/configs/powerhint.json b/configs/powerhint.json
+index 605d2ef..7d773f2 100644
+--- a/configs/powerhint.json
++++ b/configs/powerhint.json
+@@ -268,18 +268,6 @@
+       "Duration": 0,
+       "Value": "EXPENSIVE_RENDERING"
+     },
+-    {
+-      "PowerHint": "EXPENSIVE_RENDERING",
+-      "Node": "GPUMinFreq",
+-      "Duration": 0,
+-      "Value": "647000000"
+-    },
+-    {
+-      "PowerHint": "EXPENSIVE_RENDERING",
+-      "Node": "GPUMaxFreq",
+-      "Duration": 0,
+-      "Value": "647000000"
+-    },
+     {
+       "PowerHint": "DOUBLE_TAP_TO_WAKE",
+       "Node": "DoubleTapToWakeEnable",

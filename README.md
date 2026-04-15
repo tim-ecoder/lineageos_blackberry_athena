@@ -1,7 +1,7 @@
 # LineageOS 22.2 for BlackBerry KEY2 (athena)
 ## Mostly developed by Igor (BotchedRPR)
 
-## Custom-rom by krab-ubica-v1.0
+## Custom-rom by krab-ubica
 ### based on [device-tree](https://github.com/FumoEnterprises/) at date 09.03.2026  
 
 ## Changes to Igor's ROM at 01.03.2026 
@@ -28,4 +28,3 @@ available in custom ROMs like this one.
 ## Known bugs:
 - Flash-torch yellow
 - Camera crashed sometimes
-- NFC payments work, but not stable

@@ -1,9 +1,9 @@
 diff --git a/hal/voice.c b/hal/voice.c
-index cd0c14c7f5..fe87d2d98c 100644
+index 355dea7a4f..f333c71c8f 100644
 --- a/hal/voice.c
 +++ b/hal/voice.c
-@@ -814,12 +814,12 @@ void voice_update_devices_for_all_voice_usecases(struct audio_device *adev)
-     struct audio_usecase *usecase;
+@@ -863,10 +863,15 @@ void voice_update_devices_for_all_voice_usecases(struct audio_device *adev)
+ 
      list_for_each(node, &adev->usecase_list) {
          usecase = node_to_item(node, struct audio_usecase, list);
 -        if (usecase->type == VOICE_CALL) {
@@ -11,9 +11,11 @@ index cd0c14c7f5..fe87d2d98c 100644
              ALOGV("%s: updating device for usecase:%s", __func__,
                    use_case_table[usecase->id]);
              usecase->stream.out = adev->current_call_output;
-             if (adev->bt_sco_on && adev->current_call_output != NULL) {
--                ALOGD("%s: bt_sco_on, forcing BT SCO device for voice call", __func__);
++            if (adev->bt_sco_on && adev->current_call_output != NULL) {
 +                ALOGD("%s: bt_sco_on, forcing BT SCO device for voice/voip call", __func__);
-                 adev->current_call_output->devices = AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET;
-             }
++                reassign_device_list(&adev->current_call_output->device_list,
++                                     AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET, "");
++            }
              select_devices(adev, usecase->id);
+         }
+     }

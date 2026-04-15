@@ -1,121 +1,33 @@
-From 019a600f41787c64de4fa7f25faa7383e5698f34 Mon Sep 17 00:00:00 2001
-From: Johnathan Cintron <squash@shadowfall.me>
-Date: Thu, 19 Mar 2026 11:41:47 -0400
-Subject: [PATCH] msm8998-audio: Fix routing bugs
-
-Change-Id: I2096941b6492b2f77531d970f5bbb888ff64f84c
----
- hal/audio_hw.c | 46 +++++++++++++++++++++++++++++++++++++++++-----
- hal/voice.c    |  5 ++++-
- 2 files changed, 45 insertions(+), 6 deletions(-)
-
 diff --git a/hal/audio_hw.c b/hal/audio_hw.c
-index 58339bd31c..5b7ab18d91 100644
+index 2546eb1bfa..796ebb099f 100644
 --- a/hal/audio_hw.c
 +++ b/hal/audio_hw.c
-@@ -1813,6 +1813,24 @@ static void check_usecases_capture_codec_backend(struct audio_device *adev,
-     }
- 
-     if (num_uc_to_switch) {
-+        /* Close PCM handles for active capture streams before rerouting.
-+         * Tearing down the snd_device while a PCM handle is open causes
-+         * pcm_read() to return errors, triggering a standby/restart loop. */
-+        list_for_each(node, &adev->usecase_list) {
-+            usecase = node_to_item(node, struct audio_usecase, list);
-+            if (switch_device[usecase->id] && usecase->type == PCM_CAPTURE &&
-+                usecase->stream.in && !usecase->stream.in->standby) {
-+                struct stream_in *in = usecase->stream.in;
-+                ALOGD("%s: closing PCM for capture usecase %s before reroute",
-+                      __func__, use_case_table[usecase->id]);
-+                in->standby = true;
-+                if (in->pcm) {
-+                    pcm_close(in->pcm);
-+                    in->pcm = NULL;
+@@ -5126,7 +5126,14 @@ int route_output_stream(struct stream_out *out,
+                                                 out->handle);
+             }
+             if (!bypass_a2dp) {
+-                select_devices(adev, out->usecase);
++                /* Don't override BT SCO voice routing with non-call stream routing */
++                if (adev->bt_sco_on && voice_is_in_call(adev) &&
++                    !output_drives_call(adev, out)) {
++                    ALOGD("%s: BT SCO active during call, skipping select_devices for usecase %d",
++                          __func__, out->usecase);
++                } else {
++                    select_devices(adev, out->usecase);
 +                }
-+            }
-+        }
-+
-         /* All streams have been de-routed. Disable the device */
- 
-         /* Make sure the previous devices to be disabled first and then enable the
-@@ -2710,13 +2728,14 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
-     }
- 
-     /* Disable current sound devices */
--    if (usecase->out_snd_device != SND_DEVICE_NONE) {
-+    if (usecase->out_snd_device != SND_DEVICE_NONE ||
-+        usecase->in_snd_device != SND_DEVICE_NONE) {
-         disable_audio_route(adev, usecase);
-+    }
-+    if (usecase->out_snd_device != SND_DEVICE_NONE) {
-         disable_snd_device(adev, usecase->out_snd_device);
-     }
--
-     if (usecase->in_snd_device != SND_DEVICE_NONE) {
--        disable_audio_route(adev, usecase);
-         disable_snd_device(adev, usecase->in_snd_device);
-     }
- 
-@@ -4652,7 +4671,14 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
-                                                     out->handle);
-                 }
-                 if (!bypass_a2dp) {
--                    select_devices(adev, out->usecase);
-+                    /* Don't override BT SCO voice routing with non-call stream routing */
-+                    if (adev->bt_sco_on && voice_is_in_call(adev) &&
-+                        !output_drives_call(adev, out)) {
-+                        ALOGD("%s: BT SCO active during call, skipping select_devices for usecase %d",
-+                              __func__, out->usecase);
-+                    } else {
-+                        select_devices(adev, out->usecase);
-+                    }
-                 } else {
-                     if (new_dev & AUDIO_DEVICE_OUT_SPEAKER_SAFE)
-                         out->devices = AUDIO_DEVICE_OUT_SPEAKER_SAFE;
-@@ -8217,10 +8243,20 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
-     ret = str_parms_get_str(parms, "BT_SCO", value, sizeof(value));
-     if (ret >= 0) {
-         /* When set to false, HAL should disable EC and NS */
--        if (strcmp(value, AUDIO_PARAMETER_VALUE_ON) == 0){
-+        if (strcmp(value, AUDIO_PARAMETER_VALUE_ON) == 0) {
-             adev->bt_sco_on = true;
-+            if (voice_is_in_call(adev) && adev->current_call_output != NULL) {
-+                ALOGD("BT_SCO ON during active call, rerouting voice usecases");
-+                adev->current_call_output->devices = AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET;
-+                voice_update_devices_for_all_voice_usecases(adev);
-+            }
-         } else {
+             } else {
+                 if (compare_device_type(&new_devices, AUDIO_DEVICE_OUT_SPEAKER_SAFE))
+                     reassign_device_list(&out->device_list, AUDIO_DEVICE_OUT_SPEAKER_SAFE, "");
+@@ -8916,6 +8923,12 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
+          }
+          else {
              adev->bt_sco_on = false;
 +            if (voice_is_in_call(adev) && adev->current_call_output != NULL) {
 +                ALOGD("BT_SCO OFF during active call, rerouting voice usecases");
-+                adev->current_call_output->devices = AUDIO_DEVICE_OUT_EARPIECE;
++                reassign_device_list(&adev->current_call_output->device_list,
++                                     AUDIO_DEVICE_OUT_EARPIECE, "");
 +                voice_update_devices_for_all_voice_usecases(adev);
 +            }
              audio_extn_sco_reset_configuration();
          }
      }
-diff --git a/hal/voice.c b/hal/voice.c
-index b4ed42728d..cd0c14c7f5 100644
---- a/hal/voice.c
-+++ b/hal/voice.c
-@@ -812,13 +812,16 @@ void voice_update_devices_for_all_voice_usecases(struct audio_device *adev)
- {
-     struct listnode *node;
-     struct audio_usecase *usecase;
--
-     list_for_each(node, &adev->usecase_list) {
-         usecase = node_to_item(node, struct audio_usecase, list);
-         if (usecase->type == VOICE_CALL) {
-             ALOGV("%s: updating device for usecase:%s", __func__,
-                   use_case_table[usecase->id]);
-             usecase->stream.out = adev->current_call_output;
-+            if (adev->bt_sco_on && adev->current_call_output != NULL) {
-+                ALOGD("%s: bt_sco_on, forcing BT SCO device for voice call", __func__);
-+                adev->current_call_output->devices = AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET;
-+            }
-             select_devices(adev, usecase->id);
-         }
-     }
--- 
-2.43.0
-

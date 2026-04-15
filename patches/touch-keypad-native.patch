@@ -1,8 +1,8 @@
 diff --git a/services/inputflinger/reader/EventHub.cpp b/services/inputflinger/reader/EventHub.cpp
-index 013ef862ad..41f316d641 100644
+index c6054e7b80..d3f75c8fae 100644
 --- a/services/inputflinger/reader/EventHub.cpp
 +++ b/services/inputflinger/reader/EventHub.cpp
-@@ -1547,6 +1547,15 @@ bool EventHub::setKeyboardLayoutOverlay(int32_t deviceId, std::shared_ptr<KeyCha
+@@ -1579,6 +1579,15 @@ bool EventHub::setKeyboardLayoutOverlay(RawDeviceId deviceId,
      if (device == nullptr || device->keyMap.keyCharacterMap == nullptr) {
          return false;
      }
@@ -19,18 +19,10 @@ index 013ef862ad..41f316d641 100644
          device->keyMap.keyCharacterMap->clearLayoutOverlay();
          return true;
 diff --git a/services/inputflinger/reader/mapper/TouchInputMapper.cpp b/services/inputflinger/reader/mapper/TouchInputMapper.cpp
-index 5c90cbb6ce..ead2d8d129 100644
+index a6dea4efc7..694d13e512 100644
 --- a/services/inputflinger/reader/mapper/TouchInputMapper.cpp
 +++ b/services/inputflinger/reader/mapper/TouchInputMapper.cpp
-@@ -425,6 +425,7 @@ TouchInputMapper::Parameters TouchInputMapper::computeParameters(
-     if (parameters.orientationAware ||
-         parameters.deviceType == Parameters::DeviceType::TOUCH_SCREEN ||
-         parameters.deviceType == Parameters::DeviceType::POINTER ||
-+        parameters.deviceType == Parameters::DeviceType::TOUCH_PAD ||
-         (parameters.deviceType == Parameters::DeviceType::TOUCH_NAVIGATION &&
-          deviceContext.getAssociatedViewport())) {
-         parameters.hasAssociatedDisplay = true;
-@@ -481,6 +482,8 @@ TouchInputMapper::Parameters::DeviceType TouchInputMapper::computeDeviceType(
+@@ -429,6 +429,8 @@ TouchInputMapper::Parameters::DeviceType TouchInputMapper::computeDeviceType(
          deviceType = Parameters::DeviceType::TOUCH_SCREEN;
      } else if (deviceTypeString == "touchNavigation") {
          deviceType = Parameters::DeviceType::TOUCH_NAVIGATION;
@@ -39,7 +31,7 @@ index 5c90cbb6ce..ead2d8d129 100644
      } else if (deviceTypeString == "pointer") {
          deviceType = Parameters::DeviceType::POINTER;
      } else if (deviceTypeString != "default" && deviceTypeString != "") {
-@@ -942,6 +945,9 @@ void TouchInputMapper::configureInputDevice(nsecs_t when, bool* outResetNeeded)
+@@ -880,6 +882,9 @@ void TouchInputMapper::configureInputDevice(nsecs_t when, bool* outResetNeeded)
          if (hasStylus()) {
              mSource |= AINPUT_SOURCE_STYLUS;
          }
@@ -50,10 +42,10 @@ index 5c90cbb6ce..ead2d8d129 100644
          mSource = AINPUT_SOURCE_TOUCH_NAVIGATION | AINPUT_SOURCE_TOUCHPAD;
          mDeviceMode = DeviceMode::NAVIGATION;
 diff --git a/services/inputflinger/reader/mapper/TouchInputMapper.h b/services/inputflinger/reader/mapper/TouchInputMapper.h
-index ef0e02f40c..a9c094f0f5 100644
+index 3fc7f5e195..2b84d15be1 100644
 --- a/services/inputflinger/reader/mapper/TouchInputMapper.h
 +++ b/services/inputflinger/reader/mapper/TouchInputMapper.h
-@@ -228,6 +228,7 @@ protected:
+@@ -221,6 +221,7 @@ protected:
      struct Parameters {
          enum class DeviceType {
              TOUCH_SCREEN,

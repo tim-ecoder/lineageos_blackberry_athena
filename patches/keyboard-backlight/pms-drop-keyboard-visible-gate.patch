@@ -1,0 +1,18 @@
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 97c6bb4610b0..96a0be779009 100644
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -3419,8 +3419,11 @@ public final class PowerManagerService extends SystemService
+                                 if (keyboardBrightness > BRIGHTNESS_OFF_FLOAT) {
+                                     keyboardBrightness *= screenBrightScale;
+                                 }
+-                                mKeyboardLight.setBrightness(mKeyboardVisible ?
+-                                        keyboardBrightness : BRIGHTNESS_OFF_FLOAT);
++                                // athena keyboard is always physically present, so
++                                // mKeyboardVisible (driven by LID switch) would gate
++                                // the backlight off. Ignore it and drive brightness
++                                // directly from Settings.Secure / LineageSettings.
++                                mKeyboardLight.setBrightness(keyboardBrightness);
+                             }
+                         }
+                     } else {

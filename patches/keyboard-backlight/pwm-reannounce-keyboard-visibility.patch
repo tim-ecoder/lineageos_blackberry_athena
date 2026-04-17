@@ -1,0 +1,22 @@
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 6ecbf2b3942b..a468b4b56ef1 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -3665,8 +3665,17 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     @Override
+     public void adjustConfigurationLw(Configuration config, int keyboardPresence,
+             int navigationPresence) {
++        boolean hadBuiltInKeyboard = mHaveBuiltInKeyboard;
+         mHaveBuiltInKeyboard = (keyboardPresence & PRESENCE_INTERNAL) != 0;
+ 
++        // applyLidSwitchState at boot can run before input enumeration detects the
++        // built-in keyboard, leaving PowerManagerService.mKeyboardVisible stuck at
++        // false. Re-announce visibility when the built-in keyboard appears so the
++        // keyboard backlight driver path is re-armed.
++        if (!hadBuiltInKeyboard && mHaveBuiltInKeyboard && mPowerManager != null) {
++            mPowerManager.setKeyboardVisibility(isBuiltInKeyboardVisible());
++        }
++
+         readLidState();
+ 
+         if (config.keyboard == Configuration.KEYBOARD_NOKEYS

@@ -1,0 +1,37 @@
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 73ace0cbaf0a..405efbb16e00 100644
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -3172,7 +3172,10 @@ public final class PowerManagerService extends SystemService
+                     if (now < groupNextTimeout) {
+                         groupUserActivitySummary = USER_ACTIVITY_SCREEN_BRIGHT;
+                         if (wakefulness == WAKEFULNESS_AWAKE) {
+-                            // Get current screen brightness to scale button/keyboard
++                            // Get current screen brightness to scale button/keyboard.
++                            // Inverse mapping for physical-keyboard backlight: dim LCD
++                            // means dark environment (kbd needs light); bright LCD means
++                            // daylight (kbd light is invisible and wastes power).
+                             float screenBrightScale = 1.0f;
+                             try {
+                                 int screenBrightInt = Settings.System.getIntForUser(
+@@ -3180,8 +3183,18 @@ public final class PowerManagerService extends SystemService
+                                         Settings.System.SCREEN_BRIGHTNESS,
+                                         255,
+                                         UserHandle.USER_CURRENT);
+-                                // Scale: brightness 0-255 maps to 0.1-1.0 for keys
+-                                screenBrightScale = Math.max(0.1f, screenBrightInt / 255.0f);
++                                if (screenBrightInt <= 0) {
++                                    screenBrightScale = 0.0f;
++                                } else if (screenBrightInt <= 3) {
++                                    // Ultra-dim (darkroom): medium kbd, don't blind user
++                                    screenBrightScale = 120.0f / 255.0f;
++                                } else if (screenBrightInt < 50) {
++                                    // Dim/medium: full kbd
++                                    screenBrightScale = 1.0f;
++                                } else {
++                                    // Bright (daylight): kbd off
++                                    screenBrightScale = 0.0f;
++                                }
+                             } catch (Exception e) {
+                                 screenBrightScale = 1.0f;
+                             }

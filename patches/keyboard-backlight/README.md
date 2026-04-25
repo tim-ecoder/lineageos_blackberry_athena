@@ -40,3 +40,20 @@ when the user wants it off).
 This is needed in addition to the PWM fix because even with the
 visibility announce fix, a boot-time race can still leave
 `mKeyboardVisible=false` if the input enumeration ordering shifts.
+
+## kbd-backlight-inverse-lcd.patch
+
+Replaces the linear `screenBrightScale = max(0.1, brightness/255)`
+mapping in PowerManagerService.java with a stepped inverse-LCD curve
+tuned for athena's physical QWERTY:
+
+| LCD brightness  | kbd backlight |
+|-----------------|---------------|
+| 0               | off           |
+| 1–3 (darkroom)  | ~47 % (don't blind in pitch dark) |
+| 4–49 (dim/medium) | full        |
+| 50+ (daylight)  | off (kbd light is invisible outdoors anyway, wastes power) |
+
+Original patch from LOS22 build tree
+(`/data4/LOS22-build/.../kbd-backlight-inverse-lcd.patch`); applies
+cleanly on top of the two patches above.

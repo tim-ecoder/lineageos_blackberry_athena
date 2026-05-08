@@ -1,0 +1,36 @@
+diff --git a/release/aconfig/bp4a/com.android.systemui/bouncer_ui_revamp_2_flag_values.textproto b/release/aconfig/bp4a/com.android.systemui/bouncer_ui_revamp_2_flag_values.textproto
+new file mode 100644
+index 00000000..9b32ba6e
+--- /dev/null
++++ b/release/aconfig/bp4a/com.android.systemui/bouncer_ui_revamp_2_flag_values.textproto
+@@ -0,0 +1,6 @@
++flag_value {
++  package: "com.android.systemui"
++  name: "bouncer_ui_revamp_2"
++  state: DISABLED
++  permission: READ_ONLY
++}
+diff --git a/release/aconfig/bp4a/com.android.systemui/bouncer_ui_revamp_flag_values.textproto b/release/aconfig/bp4a/com.android.systemui/bouncer_ui_revamp_flag_values.textproto
+new file mode 100644
+index 00000000..13ccea19
+--- /dev/null
++++ b/release/aconfig/bp4a/com.android.systemui/bouncer_ui_revamp_flag_values.textproto
+@@ -0,0 +1,6 @@
++flag_value {
++  package: "com.android.systemui"
++  name: "bouncer_ui_revamp"
++  state: DISABLED
++  permission: READ_ONLY
++}
+diff --git a/release/aconfig/bp4a/com.android.systemui/pin_input_field_styled_focus_state_flag_values.textproto b/release/aconfig/bp4a/com.android.systemui/pin_input_field_styled_focus_state_flag_values.textproto
+new file mode 100644
+index 00000000..dde29076
+--- /dev/null
++++ b/release/aconfig/bp4a/com.android.systemui/pin_input_field_styled_focus_state_flag_values.textproto
+@@ -0,0 +1,6 @@
++flag_value {
++  package: "com.android.systemui"
++  name: "pin_input_field_styled_focus_state"
++  state: DISABLED
++  permission: READ_ONLY
++}

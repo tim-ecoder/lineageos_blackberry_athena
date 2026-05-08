@@ -59,3 +59,125 @@ to find the minimal disable set.
 - Files are temporary — once the fix is verified and either upstreamed
   or committed as a permanent device-tree override, this `temp-apk/`
   folder will be removed.
+
+---
+
+# BT-lag-on-unlock A/B BT APEXes (athena LOS 23.2)
+
+Built 2026-05-09 from `packages/modules/Bluetooth @ lineage-23.2`
+against the same `vendor/lineage @ lineage-23.2` tree, kernel
+`sdm660-4p19`. Both APEXes contain the `com.android.bluetooth`
+mainline module with different aconfig flag states baked in.
+
+## Files
+
+| APEX | aconfig flag state |
+|---|---|
+| `com.android.bt_baseline.capex` | upstream LOS 23.2 BT module — `a2dp_fmq_read_exact=ENABLED`, `a2dp_source_null_fixed_queue=ENABLED`, `ref_counted_native_wakelock=ENABLED`, `a2dp_sbc_underflow_recovery=ENABLED` (all `READ_ONLY`, baked via `bp3a` inheritance) |
+| `com.android.bt_4flag_disabled.capex` | four-flag override — all four `DISABLED, READ_ONLY` via `vendor/lineage/release/aconfig/bp4a/com.android.bluetooth.flags/*_flag_values.textproto` |
+
+md5:
+- `6bbaa0bb931a6e396a340b82155191f5  com.android.bt_baseline.capex`
+- `3f991a6dd8bbd22fb5204d1a7d60fea1  com.android.bt_4flag_disabled.capex`
+
+(Same compressed size, different content — aconfig payload is small but
+DCE strips reachable code in the disabled-flag build.)
+
+## Hypothesis
+
+LOS 23 (Android 16) enables four `com.android.bluetooth.flags` which
+activate new code paths in:
+
+- `packages/modules/Bluetooth/system/btif/src/btif_a2dp_source.cc:335,441`
+  (`a2dp_source_null_fixed_queue`) — A2DP source init does RT scheduling
+  enable + `audio::a2dp::init()` synchronously on main thread instead of
+  posted via `do_in_main_thread(btif_a2dp_source_startup_delayed)`
+- `packages/modules/Bluetooth/system/btif/src/btif_a2dp_source.cc:203,573`
+  (`ref_counted_native_wakelock`) — `wakelock_release()` only fires when
+  currently streaming; otherwise wakelock kept across stream stop/restart
+- `packages/modules/Bluetooth/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.cc:540`
+  (`a2dp_fmq_read_exact`) — new `ReadAudioDataExact` path with 10-retry
+  loop returning 0 on underflow
+- `a2dp_sbc_underflow_recovery` — gates feeding-counter reset on SBC
+  underflow (codec on test pairing is AAC, included for safety)
+
+LOS 22.2 (A15) has none of these flags overridden — they default off in
+the Mainline BT module, the new code paths never execute, and BT
+audio resumes within ~250ms of unlock without an audible glitch.
+
+## Background — what was already disproven
+
+Earlier today the build session tested three source-level patches in
+`aidl/a2dp/client_interface_aidl.cc::ReadAudioData`:
+1. Pad short reads with PCM silence in the new ExactRead path
+2. Pad short reads in the legacy path
+3. Force `a2dp_fmq_read_exact` flag OFF in source via `false &&`
+
+Variant 3 was decisive: the legacy A15 code path runs identically on
+LOS23 hardware and the lag persists. Conclusion at the time: regression
+is upstream of the FMQ producer. **All three source patches were
+reverted; tree is clean.**
+
+The four-flag aconfig override approach is the next test, modeled on
+the successful PIN-lag fix earlier today (`SystemUI_revamp_disabled.apk`
+above). Architectural pattern matches: A16 introduces flags `ENABLED,
+READ_ONLY` that activate new code paths, LOS22 baseline has them off,
+runtime override is cosmetic because READ_ONLY bakes the value into
+bytecode at compile time.
+
+## Acceptance test
+
+Lock device, BT music playing, wait 30s+ for the bug to arm via deep
+sleep, unlock, listen for the single audible glitch at unlock moment.
+
+Pre-flash baseline: every unlock after first deep sleep glitches.
+Target: zero audible glitch on any unlock.
+
+Codec on test pairing: AAC 44100 Hz / 16-bit / stereo (verified via
+`dumpsys bluetooth_manager | grep mCodecConfig`).
+
+## Install
+
+The BT module is a privileged mainline APEX. Three install paths:
+
+1. **Full system flash via fastboot** (cleanest):
+   `adb reboot bootloader && cd /data4/LOS23-build && echo "user" | sudo -S bash flash-imgs-all.sh`
+   This is what the build session recommends — no APEX-validation issues.
+
+2. **APEX activation via apexservice** (testable but can fail prod
+   verification):
+   ```
+   adb push com.android.bt_4flag_disabled.capex /data/local/tmp/
+   adb shell 'cmd apexservice activatePackage /data/local/tmp/com.android.bt_4flag_disabled.capex'
+   adb shell stop && adb shell start
+   ```
+
+3. **Replace in /system/apex/** (requires `mount -o rw,remount /` or
+   patched fstab; also won't survive verified boot on user builds).
+
+## Verification on device after install
+
+```
+cmd device_config get com.android.bluetooth a2dp_fmq_read_exact
+cmd device_config get com.android.bluetooth a2dp_source_null_fixed_queue
+cmd device_config get com.android.bluetooth ref_counted_native_wakelock
+cmd device_config get com.android.bluetooth a2dp_sbc_underflow_recovery
+```
+
+All four should return `false` AND be honored by code (READ_ONLY baked
+at compile time means runtime cannot flip them back).
+
+## Independent confounder discovered today
+
+`device/blackberry/sdm660-common` commit `2130948` (May 2) enabled A2DP
+offload to QDSP6 by flipping three vendor props:
+- `persist.bluetooth.a2dp_offload.disabled    true → false`
+- `ro.bluetooth.a2dp_offload.supported        false → true`
+- `vendor.audio.feature.a2dp_offload.enable   false → true`
+
+This may cause an audio quality regression independent of the BT-lag
+investigation, since BBRY vendor blobs use legacy
+`com.qualcomm.qti.bluetooth_audio@1.0` HIDL — the QDSP6 offload path
+may not have proper ACDB calibration for athena. **Not reverted in
+this build.** If sound quality on the new APEX is worse than baseline,
+the offload commit is the suspect to revert next.

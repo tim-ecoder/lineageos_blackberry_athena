@@ -289,6 +289,111 @@ remaining suspects are AudioFlinger threading (PlaybackThread / Tracks),
 audio HAL service (`hardware/interfaces/bluetooth/audio/aidl/default/`),
 or a deeper Mainline BT module rebuild.
 
+---
+
+# BT-lag round 3 — `remove_stream_suspend` (audioserver native)
+
+Built 2026-05-09. Round 2's audio framework 2-flag disable did not
+help (services.jar swap verified active, both flags read false at
+runtime, lag persisted). Round 3 targets a single native-side flag
+in `com.android.media.audioserver` namespace — `remove_stream_suspend`.
+
+## Files
+
+| File | What | md5 |
+|---|---|---|
+| `audioserver_remove_stream_suspend_disabled` | rebuilt `/system/bin/audioserver` (3.0 MB) — contains AudioFlinger.cpp main logic statically linked | `bb5ee0c3e9060bb77f6c2509ccf27f48` |
+| `libaudiopolicymanagerdefault_remove_stream_suspend_disabled.so` | rebuilt `/system/lib64/libaudiopolicymanagerdefault.so` (722 KB) — contains AudioPolicyManager.cpp logic | `6277d8da11629aeada953f0f6ad27009` |
+
+The single disabled flag:
+
+- **`com.android.media.audioserver::remove_stream_suspend`** — was ENABLED via bp3a/bp4a inheritance. Now DISABLED, READ_ONLY at compile time.
+
+## Hypothesis (very strong, source-level direct match)
+
+`AudioPolicyManager.cpp::checkForDeviceAndOutputChanges`. The function comment at the call site is the smoking gun:
+
+```cpp
+// "checkA2dpSuspend must run before checkOutputForAllStrategies so that A2DP
+//  output is suspended before any tracks are moved to it"
+if (!remove_stream_suspend()) {
+    checkA2dpSuspend();           // LOS222: runs (proper sequencing)
+}
+checkOutputForAllStrategies();    // LOS23 with flag ENABLED:
+                                   // tracks moved to A2DP WITHOUT prior suspend
+```
+
+When `remove_stream_suspend = ENABLED` (LOS23 default), `checkA2dpSuspend()` is **skipped** in `checkForDeviceAndOutputChanges()`. The function comment EXPLICITLY warns this should run BEFORE moving tracks to A2DP output, otherwise tracks get moved while A2DP isn't properly suspended/resumed.
+
+On wake from deep sleep, the BT speaker re-attaches → `checkForDeviceAndOutputChanges()` runs → tracks routed to A2DP without prior suspend → audio cracks until A2DP catches up. Maps directly to "cracky audio for some seconds, then recovers."
+
+LOS222 had no `com.android.media.audioserver` overrides at all — `checkA2dpSuspend()` always ran first, no rush.
+
+Additional callsites:
+- `AudioFlinger.cpp:3181` — `LOG_ALWAYS_FATAL` if old suspend code is called when flag enabled. The flag was meant to be paired with new MMAP-based suspend logic that bypasses the old path. For non-MMAP A2DP (athena CPU encoding), this leaves a behavioral gap.
+- `AudioFlinger.cpp:3201` — same.
+- `AudioPolicyManager.cpp:7649` — same call site, secondary.
+
+## Install
+
+services.jar from round 2 STAYS — round 3 is purely native side, no overlap. Final on-device state should be:
+
+- `/system/system_ext/priv-app/SystemUI/SystemUI.apk` = patched (PIN fix)
+- `/system/apex/com.android.bt.capex` = patched 4-flag-disabled (round 1)
+- `/system/framework/services.jar` = patched 2-flag-disabled (round 2)
+- `/system/bin/audioserver` = patched (round 3, NEW)
+- `/system/lib64/libaudiopolicymanagerdefault.so` = patched (round 3, NEW)
+
+### Path A — full fastboot flash (cleanest)
+
+The build host's `flash-imgs-all.sh` flashes a `system.img` containing all of round 1 + round 2 + round 3 patched, plus the matching BT APEX. One step.
+
+```bash
+adb -s 5000194162 reboot bootloader
+# on build host:
+cd /data4/LOS23-build && echo "user" | sudo -S bash flash-imgs-all.sh
+```
+
+### Path B — native binary swap (more involved)
+
+The audioserver binary needs SELinux relabel and audioserver process restart. Pseudocode:
+
+```bash
+adb shell 'mount -o rw,remount /'
+adb shell 'cp /system/bin/audioserver /sdcard/claude/bt-lag/audioserver.before-stream-suspend-$(date +%Y%m%d-%H%M%S)'
+adb shell 'cp /system/lib64/libaudiopolicymanagerdefault.so /sdcard/claude/bt-lag/libaudiopolicymanagerdefault.so.before-$(date +%Y%m%d-%H%M%S)'
+adb push audioserver_remove_stream_suspend_disabled /system/bin/audioserver
+adb push libaudiopolicymanagerdefault_remove_stream_suspend_disabled.so /system/lib64/libaudiopolicymanagerdefault.so
+adb shell 'chown root:root /system/bin/audioserver && chmod 755 /system/bin/audioserver && restorecon /system/bin/audioserver'
+adb shell 'chown root:root /system/lib64/libaudiopolicymanagerdefault.so && chmod 644 /system/lib64/libaudiopolicymanagerdefault.so && restorecon /system/lib64/libaudiopolicymanagerdefault.so'
+adb shell 'killall audioserver'   # init.audioserver.rc respawns automatically
+sleep 5
+adb shell 'pidof audioserver'      # should print new pid
+```
+
+Or just `adb reboot` after pushing — also fine.
+
+## Verification
+
+This flag is `READ_ONLY` and native — `cmd device_config get` won't return a value (services.jar ground truth path doesn't apply). Verify via:
+
+```bash
+adb shell 'pidof audioserver'                       # confirm running
+adb shell 'logcat -d -b system | grep -i "remove_stream_suspend"'  # may emit a log
+adb shell 'md5sum /system/bin/audioserver'          # should match bb5ee0c3...
+adb shell 'md5sum /system/lib64/libaudiopolicymanagerdefault.so'   # should match 6277d8da...
+```
+
+Best behavioral verification: lock + unlock test. If pre-fix logcat showed `LOG_ALWAYS_FATAL` style errors around stream-suspend, those should disappear now (since the legacy path is intentionally re-enabled).
+
+## Test
+
+Same protocol — lock + ≥30s deep sleep + unlock with BT music playing.
+
+If this fixes the lag → minimum-disable found. The fix is a single line in a single textproto. We can upstream as a separate `patches/bt-lag/` directory in this repo.
+
+If lag persists → audio framework + audioserver flag space ruled out. Remaining suspects narrow to AudioFlinger threading internals (PlaybackThread, Track lifecycle) and the BT audio HAL service binary itself (`hardware/interfaces/bluetooth/audio/aidl/default/`).
+
 ## Independent confounder discovered today
 
 `device/blackberry/sdm660-common` commit `2130948` (May 2) enabled A2DP

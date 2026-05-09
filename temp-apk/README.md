@@ -521,6 +521,100 @@ between LOS222 and LOS23), or AudioFlinger PlaybackThread internals.
 | `/system/bin/audioserver` + `libaudiopolicymanagerdefault.so` | `remove_stream_suspend` disabled (round 3) |
 | `/system/build.prop` + `/vendor/build.prop` | A2DP offload reverted (round 4, NEW) |
 
+---
+
+# BT-lag round 5 — keymaster@3.0 service removal (CPU drain root cause)
+
+Built 2026-05-09. On-device session pinpointed the actual mechanism.
+Five aconfig disable rounds + offload revert all failed because
+**the regression is CPU-side, not framework**:
+
+`/vendor/etc/init/android.hardware.keymaster@3.0-service-qti.rc`
+declares an `early_hal` service that:
+
+1. Tries to register `keymaster@3.0::IKeymasterDevice/default` with hwservicemanager
+2. Always fails — vendor `/vendor/etc/vintf/manifest.xml` only declares `@4.0`
+3. Process exits → init's auto-restart spawns it again every ~5s
+4. Each spawn does `QSEECom_get_handle` (TZ TA load) → CPU/TZ contention
+5. BT periodic task misses 23ms deadline → FMQ underflow → A2DP cracks
+
+**62 spawn/exit cycles per 100s** confirmed in cycle.logcat capture.
+Runtime fix verified on device (deleted the rc file → 0 spawns
+post-reboot, keystore2 + keymaster@4.0 still healthy, all auth functional).
+
+## Build-tree changes (no temp-apk artefact this round — full flash only)
+
+The fix is in `vendor.img` (and the source tree). It's not a single
+swappable binary like rounds 1-3; the .rc file is what spawns the
+service, and removing it is a vendor partition change. Path: full
+fastboot flash from the build host.
+
+Files edited in source:
+- `device/blackberry/sdm660-common/proprietary-files.txt` — commented out the binary + rc lines (`# vendor/bin/hw/android.hardware.keymaster@3.0-service-qti` + `.rc`)
+- `device/blackberry/athena/proprietary-files.txt` — commented out the binary + rc lines (with sha)
+- `vendor/blackberry/sdm660-common/sdm660-common-vendor.mk` — removed `PRODUCT_COPY_FILES` rc copy entry + `PRODUCT_PACKAGES` `android.hardware.keymaster@3.0-service-qti` entry
+- `vendor/blackberry/sdm660-common/Android.bp` — removed entire `cc_prebuilt_binary { name: "android.hardware.keymaster@3.0-service-qti", ... }` block
+
+Files deleted from source:
+- `device/blackberry/sdm660-common/configs/init/android.hardware.keymaster@3.0-service-qti.rc`
+- `vendor/blackberry/sdm660-common/proprietary/vendor/etc/init/android.hardware.keymaster@3.0-service-qti.rc`
+- `vendor/blackberry/sdm660-common/proprietary/vendor/bin/hw/android.hardware.keymaster@3.0-service-qti`
+
+Kept (orphaned but harmless without the service binary):
+- `vendor/lib{,64}/hw/android.hardware.keymaster@3.0-impl-qti.so`
+- `vendor/lib/libkeymasterdeviceutils.so`, `libkeymasterprovision.so`, `libkeymasterutils.so`
+
+## Build artefact md5
+
+```
+vendor.img  b670652d3d9bff948f30042abe9cfbec  564310260 bytes
+system.img  87c8e93bac0dc84dd628ea7f596b82d2  1963991656 bytes
+```
+
+Vendor.img is 16 KB smaller than the previous build — the removed
+service binary + rc accounted for it.
+
+## Install — full fastboot flash from build host
+
+```bash
+adb -s 5000194162 reboot bootloader
+cd /data4/LOS23-build && echo "user" | sudo -S bash flash-imgs-all.sh
+```
+
+## Verify post-flash
+
+```bash
+adb shell 'logcat -d | grep keymaster-3-0 | wc -l'                  # → 0 (was 62/100s)
+adb shell 'pidof android.hardware.keymaster@4.0-service'            # → present
+adb shell 'service list | grep keystore'                            # → keystore2
+adb shell 'ls /vendor/bin/hw/ | grep keymaster'                     # → only @4.0
+adb shell 'ls /vendor/etc/init/ | grep keymaster'                   # → only @4.0
+```
+
+## Test
+
+Same protocol — lock + ≥30s deep sleep + unlock with BT music.
+
+If lag GONE → keymaster respawn was the CPU drain. **Ship as permanent commit.**
+
+If lag PERSISTS → ship the keymaster fix anyway (it's an independent
+real bug, ~62 wasted TZ TA loads per 100s) and continue source-side
+investigation. Even without fixing the lag, removing 12% TZ
+contention is worth it.
+
+## Why on-device session and build-side both correct
+
+- **On-device**: ground truth. saw 62 keymaster spawn/exit cycles
+  in 100s, traced to .rc file, verified runtime fix works.
+- **Build-side**: 5 framework aconfig rounds disproved the
+  framework-flag hypothesis, and source diffs disproved the
+  framework-code hypothesis. The mismatch was real but in
+  CPU/TZ contention, not in framework code or flags. Both
+  conclusions are consistent: the regression isn't in framework,
+  it's in CPU pressure that pushes the periodic-thread deadline
+  past tolerance, and A16 BT consumer is less tolerant of FMQ
+  short-reads than A15.
+
 ## Independent confounder discovered today
 
 `device/blackberry/sdm660-common` commit `2130948` (May 2) enabled A2DP

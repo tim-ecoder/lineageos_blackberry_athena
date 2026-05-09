@@ -167,6 +167,128 @@ cmd device_config get com.android.bluetooth a2dp_sbc_underflow_recovery
 All four should return `false` AND be honored by code (READ_ONLY baked
 at compile time means runtime cannot flip them back).
 
+---
+
+# BT-lag round 2 — audio framework aconfig (athena LOS 23.2)
+
+Built 2026-05-09 from `frameworks/base @ lineage-23.2` against the same
+`vendor/lineage @ lineage-23.2` tree. Round 1 (BT APEX 4-flag disable)
+ruled out the BT module flag space — lag persisted unchanged. Audio
+framework is the next angle.
+
+## File
+
+| File | What |
+|---|---|
+| `services_audio_flags_disabled.jar` | rebuilt `/system/framework/services.jar` with two `com.android.media.audio` flags forced DISABLED, READ_ONLY at compile time. md5 `8ab9b00c42361b8fdffd1c82eaec23a9`. |
+
+The two disabled flags:
+
+- **`optimize_bt_device_switch`** (was ENABLED via bp3a inheritance)
+- **`as_device_connection_failure`** (was ENABLED via bp3a inheritance)
+
+## Hypothesis (strong)
+
+`AudioDeviceInventory.java::setBluetoothActiveDevice` line ~2280:
+
+```java
+if (!info.mSupprNoisy
+        && (... A2DP/HEARING_AID/LE_AUDIO ...)
+        && !info.mIsDeviceSwitch) {            // ← LOS22 path: branch taken
+    delay = checkSendBecomingNoisyIntentInt(...);
+} else {
+    delay = 0;                                  // ← LOS23 with optimize_bt_device_switch=true: 0 delay
+}
+```
+
+`info.mIsDeviceSwitch = optimizeBtDeviceSwitch() && d.mNewDevice != null && d.mPreviousDevice != null`
+(`AudioDeviceBroker.java:1015`).
+
+When the BT speaker re-attaches on wake from deep sleep,
+`optimize_bt_device_switch` causes the audio framework to **skip** the
+`checkSendBecomingNoisyIntentInt(...)` delay. Becoming-noisy broadcast
+isn't sent, media apps don't pause, audio path renegotiates while
+playback is in flight. Maps directly to "cracky audio for some seconds,
+then recovers."
+
+LOS22 (A15) doesn't have this flag in any release config — every BT
+device-active event went through the proper delayed path, no rush.
+
+## How to install
+
+This swaps just `/system/framework/services.jar` (audio service is
+inside it). Three install paths in increasing complexity:
+
+### Path A — full fastboot flash from build host (cleanest)
+
+The build host has a fresh `system.img` containing the patched
+`services.jar` baked in. Easier than replicating dex2oat on device.
+
+```bash
+adb -s 5000194162 reboot bootloader
+# on build host:
+cd /data4/LOS23-build && echo "user" | sudo -S bash flash-imgs-all.sh
+```
+
+### Path B — services.jar swap (fast, requires writable /system)
+
+Backup, push, fix permissions, drop dexopt artefacts so system regenerates them on next boot:
+
+```bash
+adb shell 'mount -o rw,remount /'
+adb shell 'cp /system/framework/services.jar /sdcard/claude/bt-lag/services.jar.before-audioflags-$(date +%Y%m%d-%H%M%S)'
+adb push services_audio_flags_disabled.jar /system/framework/services.jar
+adb shell 'chown root:root /system/framework/services.jar && chmod 644 /system/framework/services.jar'
+adb shell 'restorecon /system/framework/services.jar'
+# Drop pre-compiled odex/vdex so system_server re-dexopts on boot
+adb shell 'rm -f /system/framework/oat/arm64/services.{odex,vdex,art}'
+adb reboot
+```
+
+First boot after this is slower (~30s extra) for re-dexopt. If the
+device boots fine, the patched services.jar is live.
+
+If the device bootloops, fall back to Path A or Path C.
+
+### Path C — Magisk module (overlay, doesn't touch real /system)
+
+Build a Magisk module with the patched services.jar at
+`module/system/framework/services.jar`. Requires Magisk root.
+Build session can produce one if needed.
+
+## Verification on device
+
+Once running:
+
+```bash
+adb shell 'cmd device_config get com.android.media.audio optimize_bt_device_switch'
+adb shell 'cmd device_config get com.android.media.audio as_device_connection_failure'
+```
+
+Both should be `false`. AudioService dump should also show:
+
+```bash
+adb shell 'dumpsys audio | grep -E "optimizeBtDeviceSwitch|asDeviceConnectionFailure"'
+# expected:
+#   com.android.media.audio.optimizeBtDeviceSwitch: false
+#   com.android.media.audio.as_device_connection_failure: false
+```
+
+## Test
+
+Same protocol as round 1: lock + ≥30s deep sleep + unlock with BT
+music playing. Listen for the audible glitch + cracky audio.
+
+Acceptance: lag absent / glitch single-frame and inaudible.
+
+If it works → next step: re-enable one of the two flags individually
+to find the minimal-disable set.
+
+If it doesn't work → the audio framework flag space is also ruled out;
+remaining suspects are AudioFlinger threading (PlaybackThread / Tracks),
+audio HAL service (`hardware/interfaces/bluetooth/audio/aidl/default/`),
+or a deeper Mainline BT module rebuild.
+
 ## Independent confounder discovered today
 
 `device/blackberry/sdm660-common` commit `2130948` (May 2) enabled A2DP

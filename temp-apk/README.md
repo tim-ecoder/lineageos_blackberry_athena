@@ -394,6 +394,133 @@ If this fixes the lag → minimum-disable found. The fix is a single line in a s
 
 If lag persists → audio framework + audioserver flag space ruled out. Remaining suspects narrow to AudioFlinger threading internals (PlaybackThread, Track lifecycle) and the BT audio HAL service binary itself (`hardware/interfaces/bluetooth/audio/aidl/default/`).
 
+---
+
+# BT-lag round 4 — REVERT A2DP offload (the actual baseline divergence)
+
+Built 2026-05-09. Three rounds of aconfig disabling (BT module flags,
+audio framework Java flags, audioserver native flag) **all failed**.
+The strong source-level hypotheses didn't pan out, suggesting the
+actual cause is somewhere else.
+
+Re-examined the bisect baseline. Discovered the real divergence:
+
+| Build | A2DP encoding | BT lag |
+|---|---|---|
+| LOS22 + 4.4 | CPU (`a2dp_offload.disabled=true`) | NO |
+| LOS222 (LOS22+4.19) | CPU (same props) | NO |
+| **LOS23 + 4.19** | **DSP offload via QDSP6** (props flipped May 2 by commit `2130948`) | **YES** |
+
+The "LOS22 vs LOS23 framework regression" bisect was confounded — it
+actually compared **CPU encoding vs DSP offload**, not A15 vs A16.
+Three rounds of framework aconfig disable couldn't fix a bug that
+wasn't in the framework.
+
+## Files
+
+`round4-offload-revert/` directory:
+
+| File | md5 | What |
+|---|---|---|
+| `system_build.prop` | `7d1635690b8818fe688e8840789df11d` | rebuilt `/system/build.prop` with `persist.bt.a2dp.aac_disable=true` (LOS22 baseline) |
+| `vendor_build.prop` | `ebcd9f185f8be860b4a2d771fa465844` | rebuilt `/vendor/build.prop` with `a2dp_offload.disabled=true`, `a2dp_offload.supported=false`, `a2dp_offload.enable=false` (LOS22 baseline) |
+
+Implements `git revert 2130948` cleanly. Same prop values as LOS22 device tree.
+
+## Hypothesis
+
+BBRY's vendor partition uses legacy Oreo-era `com.qualcomm.qti.bluetooth_audio@1.0`
+HIDL HAL — DSP offload on athena likely doesn't have proper ACDB calibration
+AND has broken suspend/resume lifecycle in this HAL version. Both observed
+symptoms (audio quality regression + lag-after-deep-sleep + cracky audio)
+plausibly trace to this same root cause.
+
+CPU encoding has its own downside (BT music glitches under heavy CPU load —
+typing, camera, scrolling) which originally motivated commit `2130948`. But
+that's a different problem with different fixes (RT priority for AudioOut
+threads, scheduler tuning) than the deep-sleep lag.
+
+## Install
+
+### Path A — full fastboot flash (cleanest)
+
+Build host has fresh `system.img` + `vendor.img` with reverted props baked in:
+
+```bash
+adb -s 5000194162 reboot bootloader
+cd /data4/LOS23-build && echo "user" | sudo -S bash flash-imgs-all.sh
+```
+
+### Path B — build.prop swap (fast, riskier)
+
+```bash
+adb shell 'mount -o rw,remount /'
+adb shell 'mount -o rw,remount /vendor'
+adb shell 'cp /system/build.prop /sdcard/claude/bt-lag/system_build.prop.before'
+adb shell 'cp /vendor/build.prop /sdcard/claude/bt-lag/vendor_build.prop.before'
+adb push system_build.prop /system/build.prop
+adb push vendor_build.prop /vendor/build.prop
+adb shell 'chown root:root /system/build.prop /vendor/build.prop'
+adb shell 'chmod 644 /system/build.prop /vendor/build.prop'
+adb shell 'restorecon /system/build.prop /vendor/build.prop'
+adb reboot
+```
+
+### Path C — runtime-only smoke test (fastest, partial)
+
+`ro.bluetooth.a2dp_offload.supported` is read-only and CANNOT be flipped at
+runtime — so this is partial. But the `persist.*` props can:
+
+```bash
+adb shell 'setprop persist.bluetooth.a2dp_offload.disabled true'
+adb shell 'setprop persist.bt.a2dp.aac_disable true'
+adb shell 'svc bluetooth disable; sleep 3; svc bluetooth enable'
+```
+
+Reconnect the BT speaker. Test. If lag goes away — strong signal that
+hypothesis is right (full Path A/B will close the loop fully).
+If lag persists — partial test inconclusive; need full flash.
+
+## Verify post-install
+
+```bash
+adb shell 'getprop ro.bluetooth.a2dp_offload.supported'    # → false
+adb shell 'getprop persist.bluetooth.a2dp_offload.disabled' # → true
+adb shell 'getprop vendor.audio.feature.a2dp_offload.enable' # → false
+adb shell 'getprop persist.bt.a2dp.aac_disable'            # → true
+adb shell 'dumpsys bluetooth_manager | grep -iE "offload|codec"' # codec should show CPU encoder, not offload
+```
+
+After reconnecting the BT speaker, `dumpsys media.audio_flinger` should
+show the audio output WITHOUT `AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD` flag.
+
+## Test
+
+Same protocol — lock + ≥30s deep sleep + unlock with BT music.
+
+If lag GONE → hypothesis confirmed. The bisect was wrong, the regression
+is offload-on-athena, not A16 framework. We then either:
+1. Keep the revert permanently (CPU encoding, accept the heavy-load
+   glitching the original commit was trying to fix)
+2. Hunt down a working DSP offload path (BBRY HAL update, much harder)
+3. Apply RT-priority workaround for CPU encoder under load (the original
+   alternative that the offload commit dismissed as "wrong layer")
+
+If lag PERSISTS → A16 regression is real, narrowed even further. Next
+suspects: BT audio HAL service binary itself
+(`hardware/interfaces/bluetooth/audio/aidl/default/`, 629 lines diff
+between LOS222 and LOS23), or AudioFlinger PlaybackThread internals.
+
+## Composite final state on device after Path A install
+
+| Layer | State after Round 4 |
+|---|---|
+| `/system/system_ext/priv-app/SystemUI/SystemUI.apk` | PIN-fix patched (rounds 1 of separate task) |
+| `/system/apex/com.android.bt.capex` | 4 BT flags disabled (round 1 of BT-lag) |
+| `/system/framework/services.jar` | 2 audio framework flags disabled (round 2) |
+| `/system/bin/audioserver` + `libaudiopolicymanagerdefault.so` | `remove_stream_suspend` disabled (round 3) |
+| `/system/build.prop` + `/vendor/build.prop` | A2DP offload reverted (round 4, NEW) |
+
 ## Independent confounder discovered today
 
 `device/blackberry/sdm660-common` commit `2130948` (May 2) enabled A2DP

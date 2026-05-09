@@ -1,0 +1,337 @@
+####################################
+# from generate-common-build-props
+# These properties identify this partition image.
+####################################
+ro.product.vendor.brand=BlackBerry
+ro.product.vendor.device=athena
+ro.product.vendor.manufacturer=TCL Technology
+ro.product.vendor.model=BlackBerry KEY2
+ro.product.vendor.name=bbf100dsglobal
+ro.vendor.product.cpu.abilist=arm64-v8a,armeabi-v7a,armeabi
+ro.vendor.product.cpu.abilist32=armeabi-v7a,armeabi
+ro.vendor.product.cpu.abilist64=arm64-v8a
+ro.vendor.build.date=Sat May  9 15:08:00 EAT 2026
+ro.vendor.build.date.utc=1778328480
+ro.vendor.build.fingerprint=blackberry/bbf100dsglobal/bbf100:8.1.0/OPM1.171019.026/ACQ160:user/release-keys
+ro.vendor.build.id=BP4A.251205.006
+ro.vendor.build.tags=dev-keys
+ro.vendor.build.type=userdebug
+ro.vendor.build.version.incremental=1778328480
+ro.vendor.build.version.release=16
+ro.vendor.build.version.release_or_codename=16
+ro.vendor.build.version.sdk=36
+ro.vendor.build.version.sdk_full=36.1
+####################################
+# from device/blackberry/sdm660-common/vendor.prop
+####################################
+# Audio
+af.fast_track_multiplier=1
+audio.deep_buffer.media=true
+audio.offload.min.duration.secs=30
+audio.offload.video=true
+audio.sys.noisy.broadcast.delay=600
+audio.sys.offload.pstimeout.secs=3
+persist.bluetooth.a2dp_offload.cap=sbc-aac-aptx-aptxhd-ldac
+persist.bluetooth.a2dp_offload.disabled=true
+persist.vendor.audio.fluence.speaker=true
+persist.vendor.audio.fluence.voicecall=true
+persist.vendor.audio.fluence.voicecomm=true
+persist.vendor.audio.fluence.voicerec=false
+persist.vendor.audio.hifi.int_codec=true
+persist.vendor.audio.hw.binder.size_kbyte=1024
+persist.vendor.audio.ras.enabled=false
+persist.vendor.bt.a2dp_offload_cap=sbc-aptx-aptxhd-aac
+persist.vendor.bt.aac_frm_ctl.enabled=true
+ro.af.client_heap_size_kbyte=7168
+ro.bluetooth.a2dp_offload.supported=false
+ro.vendor.audio.sdk.fluencetype=fluence
+ro.vendor.audio.sdk.ssr=false
+tunnel.audiovideo.decode=false
+tunnel.decode=false
+vendor.audio.dolby.ds2.enabled=false
+vendor.audio.dolby.ds2.hardbypass=false
+vendor.audio.feature.a2dp_offload.enable=false
+vendor.audio.feature.afe_proxy.enable=true
+vendor.audio.feature.anc_headset.enable=true
+vendor.audio.feature.audiozoom.enable=false
+vendor.audio.feature.battery_listener.enable=false
+vendor.audio.feature.compr_cap.enable=false
+vendor.audio.feature.compr_voip.enable=false
+vendor.audio.feature.compress_in.enable=false
+vendor.audio.feature.compress_meta_data.enable=true
+vendor.audio.feature.concurrent_capture.enable=false
+vendor.audio.feature.custom_stereo.enable=true
+vendor.audio.feature.deepbuffer_as_primary.enable=false
+vendor.audio.feature.display_port.enable=true
+vendor.audio.feature.dsm_feedback.enable=false
+vendor.audio.feature.dynamic_ecns.enable=false
+vendor.audio.feature.ext_hw_plugin.enable=false
+vendor.audio.feature.external_dsp.enable=false
+vendor.audio.feature.external_speaker.enable=false
+vendor.audio.feature.external_speaker_tfa.enable=false
+vendor.audio.feature.fluence.enable=true
+vendor.audio.feature.fm.enable=true
+vendor.audio.feature.hdmi_edid.enable=true
+vendor.audio.feature.hdmi_passthrough.enable=true
+vendor.audio.feature.hfp.enable=true
+vendor.audio.feature.hifi_audio.enable=true
+vendor.audio.feature.hwdep_cal.enable=false
+vendor.audio.feature.incall_music.enable=true
+vendor.audio.feature.keep_alive.enable=false
+vendor.audio.feature.kpi_optimize.enable=true
+vendor.audio.feature.maxx_audio.enable=false
+vendor.audio.feature.multi_voice_session.enable=true
+vendor.audio.feature.ras.enable=true
+vendor.audio.feature.record_play_concurency.enable=false
+vendor.audio.feature.snd_mon.enable=true
+vendor.audio.feature.spkr_prot.enable=true
+vendor.audio.feature.src_trkn.enable=true
+vendor.audio.feature.ssrec.enable=true
+vendor.audio.feature.usb_offload.enable=true
+vendor.audio.feature.usb_offload_burst_mode.enable=false
+vendor.audio.feature.usb_offload_sidetone_volume.enable=false
+vendor.audio.feature.vbat.enable=true
+vendor.audio.feature.wsa.enable=false
+vendor.audio.flac.sw.decoder.24bit=true
+vendor.audio.hw.aac.encoder=true
+vendor.audio.offload.buffer.size.kb=64
+vendor.audio.offload.gapless.enabled=true
+vendor.audio.offload.multiaac.enable=true
+vendor.audio.offload.multiple.enabled=false
+vendor.audio.offload.passthrough=false
+vendor.audio.offload.track.enable=true
+vendor.audio.parser.ip.buffer.size=262144
+#KRAB
+#vendor.audio.safx.pbe.enabled=false
+vendor.audio.spkr_prot.tx.sampling_rate=48000
+vendor.audio.tunnel.encode=false
+vendor.audio.use.sw.alac.decoder=true
+vendor.audio.use.sw.ape.decoder=true
+vendor.audio.volume.headset.gain.depcal=true
+vendor.audio_hal.period_size=192
+vendor.voice.path.for.pcm.voip=false
+# Bluetooth
+bluetooth.device.class_of_device=90,2,12
+bluetooth.hardware.power.operating_voltage_mv=3300
+bluetooth.profile.a2dp.source.enabled=true
+bluetooth.profile.asha.central.enabled=true
+bluetooth.profile.avrcp.target.enabled=true
+bluetooth.profile.bas.client.enabled=true
+bluetooth.profile.gatt.enabled=true
+bluetooth.profile.hfp.ag.enabled=true
+bluetooth.profile.hid.device.enabled=true
+bluetooth.profile.hid.host.enabled=true
+bluetooth.profile.map.server.enabled=true
+bluetooth.profile.opp.enabled=true
+bluetooth.profile.pan.nap.enabled=true
+bluetooth.profile.pan.panu.enabled=true
+bluetooth.profile.pbap.server.enabled=true
+bluetooth.profile.sap.server.enabled=true
+persist.vendor.bt.enable.splita2dp=true
+persist.vendor.bt.splita2dp.44_1_war=false
+persist.vendor.qcom.bluetooth.a2dp_offload_cap=sbc-aptx-aptxhd-aac-ldac
+persist.vendor.qcom.bluetooth.enable.splita2dp=true
+persist.vendor.qcom.bluetooth.soc=cherokee
+ro.vendor.bt.bdaddr_path=/data/misc/bluetooth/bt_mac.bin
+ro.vendor.bluetooth.wipower=false
+vendor.qcom.bluetooth.soc=cherokee
+## This is a workaround for the Bluetooth sanitize shadow call stack (SCS)
+## crash reported here: https://issuetracker.google.com/issues/302408537.
+## For details of the root cause and the cts vts tests comparison between
+## the preloading and non-preloading builds, please check the above issue.
+ro.zygote.disable_gl_preload=1
+# Camera
+camera.aux.packagelist=net.sourceforge.opencamera,org.codeaurora.snapcam,org.lineageos.aperture
+camera.disable_zsl_mode=0
+camera.panorama.quality=middle
+persist.vendor.camera.fdvideo=1
+persist.vendor.camera.ven_hdr=0
+ro.camera.record.anim.delay=200
+ro.camera.switch.anim.delay=300
+vendor.camera.aux.packagelist=org.codeaurora.snapcam,org.lineageos.aperture,net.sourceforge.opencamera
+vendor.camera.c2d.rotation=1
+# Dalvik
+dalvik.vm.heapgrowthlimit=256m
+dalvik.vm.heapmaxfree=8m
+dalvik.vm.heapminfree=512k
+dalvik.vm.heapsize=512m
+dalvik.vm.heapstartsize=8m
+dalvik.vm.heaptargetutilization=0.75
+# Display
+ro.hwui.render_ahead=20
+# DRM
+drm.service.enabled=true
+ro.com.widevine.cachesize=16777216
+persist.env.fastdorm.enabled=false
+persist.gsmapp.ezincall.video=false
+persist.sys.screenmode=1
+persist.vendor.dpm.feature=11
+# FM
+vendor.hw.fm.init=0
+# FRP
+ro.frp.pst=/dev/block/bootdevice/by-name/frp
+# GL
+ro.hardware.egl=adreno
+ro.hardware.vulkan=adreno
+ro.opengles.version=196610
+# GPS
+persist.backup.ntpServer=0.pool.ntp.org
+ro.vendor.qti.va_odm.support=1
+# Logging
+persist.vendor.stbDebugCtlEnable=0
+ro.logdumpd.enabled=0
+# Miscellaneous
+persist.sys.bbsys=on
+persist.vendor.qcomsysd.enabled=0
+ro.cp_system_other_odex=1
+sys.vendor.shutdown.waittime=500
+# OEM Unlock
+ro.oem_unlock_supported=1
+# Perf
+ro.vendor.extension_library=libqti-perfd-client.so
+# Power
+vendor.power.pasr.enabled=true
+# Radio
+persist.vendor.radio.enableadvancedscan=true
+persist.vendor.radio.data_con_rprt=1
+persist.vendor.radio.data_ltd_sys_ind=1
+persist.vendor.radio.apm_sim_not_pwdn=1
+persist.vendor.radio.sib16_support=1
+persist.vendor.radio.custom_ecc=1
+persist.vendor.radio.rat_on=combine
+persist.vendor.radio.mt_sms_ack=30
+persist.vendor.radio.procedure_bytes=SKIP
+vendor.rild.libpath=/vendor/lib64/libril-qc-qmi-1.so
+# Sensors
+ro.vendor.sdk.sensors.gestures=false
+ro.vendor.sensors.cmc=false
+ro.vendor.sensors.facing=false
+# Stagefright
+debug.stagefright.omx_default_rank.sw-audio=1
+debug.stagefright.omx_default_rank=0
+vendor.video.disable.ubwc=1
+# Wi-Fi
+ro.boot.wificountrycode=US
+# USB
+# Do NOT set persist.sys.usb.config here: when the AIDL gadget HAL is in
+# use, this value ends up copied into vendor.usb.config by init.qcom.usb.rc,
+# which then triggers the HAL's "ADB + vendor composition override" path
+# (UsbGadget.cpp:465). If vendor.usb.config is anything other than "adb",
+# the HAL looks the string up in usb_compositions.conf and falls through
+# to adb-only when it's not found (the conf is a Qcom SoC-level file we
+# don't want to patch). Sony nile also omits this setting and relies on
+# Android's default persistent-config flow.
+persist.vendor.usb.config.extra=none
+vendor.usb.controller=a800000.dwc3
+vendor.usb.device=a800000.ssusb
+vendor.usb.diag.func.name=diag
+vendor.usb.dpl.inst.name=dpl
+vendor.usb.qdss.inst.name=qdss
+vendor.usb.rmnet.func.name=rmnet_bam
+vendor.usb.rmnet.inst.name=rmnet
+vendor.usb.rndis.func.name=rndis_bam
+vendor.usb.use_ffs_mtp=1
+vendor.usb.use_gadget_hal=1
+# HEH filename encryption is being dropped
+ro.crypto.volume.filenames_mode=aes-256-cts
+####################################
+# from device/blackberry/athena/vendor.prop
+####################################
+# Audio
+debug.ftm.mixerpath=/vendor/etc/mixer_paths_bbe100.xml
+# Bluetooth
+bluetooth.device.default_name=BlackBerry KEY2
+# Camera
+camera.ans.yproc.int.main=20,20,20,20
+camera.ans.uvproc.int.main=20,20,20,20
+camera.ans.scene.contract.main=0,0,0,0
+persist.capture.burst.exposures=0,-9,9
+persist.camera.ffcolor=FFBB77
+persist.camera.ffcolor.th=3500
+persist.camera.ffcolor.th2=4500
+persist.camera.ffcolor.lev2=FFE4CA
+persist.camera.ffcolor.lev3=ffdcb9
+persist.camera.hal.debug=0
+persist.camera.hal.debug.mask=0
+persist.camera.isp.debug=0
+persist.camera.isp.debug.mask=0
+persist.camera.global.debug=0
+persist.vendor.camera.isp.turbo=1
+#persist.vendor.camera.stats.disablehaf=1
+persist.vendor.camera.af.fovc.enable=0
+video.disable.ubwc=1
+persist.camera.preview.ubwc=0
+vendor.camera.hal1.packagelist=com.dw.btime
+persist.camera.expose.aux=1
+persist.camera.dual_led_current=200,200,750,750
+persist.camera.dual.camera=0
+# Fingerprint - Goodix
+ro.hardware.fingerprint=goodix
+persist.vendor.fingerprint.type=home
+# Radio
+persist.radio.qcom_ext_enable=true
+persist.vendor.radio.uicc_se_enabled=false
+####################################
+# from android-info.prop
+####################################
+####################################
+# from variable ADDITIONAL_VENDOR_PROPERTIES
+####################################
+ro.bionic.arch=arm64
+ro.bionic.cpu_variant=cortex-a73
+ro.bionic.2nd_arch=arm
+ro.bionic.2nd_cpu_variant=cortex-a73
+persist.sys.dalvik.vm.lib.2=libart.so
+dalvik.vm.isa.arm64.variant=cortex-a73
+dalvik.vm.isa.arm64.features=default
+dalvik.vm.isa.arm.variant=cortex-a73
+dalvik.vm.isa.arm.features=default
+ro.minui.pixel_format=RGBX_8888
+ro.product.first_api_level=27
+ro.board.api_level=202504
+ro.board.api_frozen=true
+ro.vendor.build.security_patch=2020-05-01
+ro.product.board=sdm660
+ro.board.platform=sdm660
+ro.hwui.use_vulkan=
+ro.sf.lcd_density=384
+ro.build.ab_update=false
+####################################
+# from variable PRODUCT_VENDOR_PROPERTIES
+####################################
+ro.zygote=zygote64_32
+keyguard.no_require_sim=true
+ro.com.android.dataroaming=true
+ro.config.ringtone=Ring_Synth_04.ogg
+# Removed by post_process_props.py because overridden by ro.config.notification_sound?=OnTheHunt.ogg
+#ro.config.notification_sound?=pixiedust.ogg
+tombstoned.max_tombstone_count=50
+ro.logd.size.stats=64K
+log.tag.stats_log=I
+ro.carrier=unknown
+ro.config.notification_sound=OnTheHunt.ogg
+ro.config.alarm_alert=Alarm_Classic.ogg
+ro.recovery.usb.vid=18D1
+ro.recovery.usb.adb.pid=D001
+ro.recovery.usb.fastboot.pid=4EE0
+# Removed by post_process_props.py because overridden by ro.zygote=zygote64_32
+#ro.zygote?=zygote32
+# Removed by post_process_props.py because overridden by dalvik.vm.heapstartsize=8m
+#dalvik.vm.heapstartsize?=8m
+# Removed by post_process_props.py because overridden by dalvik.vm.heapgrowthlimit=256m
+#dalvik.vm.heapgrowthlimit?=192m
+# Removed by post_process_props.py because overridden by dalvik.vm.heapsize=512m
+#dalvik.vm.heapsize?=512m
+# Removed by post_process_props.py because overridden by dalvik.vm.heaptargetutilization=0.75
+#dalvik.vm.heaptargetutilization?=0.6
+# Removed by post_process_props.py because overridden by dalvik.vm.heapminfree=512k
+#dalvik.vm.heapminfree?=8m
+# Removed by post_process_props.py because overridden by dalvik.vm.heapmaxfree=8m
+#dalvik.vm.heapmaxfree?=16m
+####################################
+# from variable PRODUCT_DEFAULT_PROPERTY_OVERRIDES
+####################################
+####################################
+# from variable PRODUCT_PROPERTY_OVERRIDES
+####################################
+# end of file
